@@ -1,0 +1,24 @@
+<idea-plugin>
+    <id>org.murtukov.css-to-jss</id>
+    <name>CSS to JSS</name>
+    <vendor email="murtukov@gmail.com">Murtukov</vendor>
+
+    <description><![CDATA[
+    A lightweight plugin to convert CSS to JSS on the flight and vice versa
+    ]]></description>
+
+    <!-- please see https://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
+         on how to target different products -->
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Add your extensions here -->
+    </extensions>
+
+    <actions>
+        <!-- Add your actions here -->
+        <action id="MyAction" class="MyAction" text="Pop Dialog Action" description="SDK example action">
+            <add-to-group group-id="ToolsMenu" anchor="first"/>
+        </action>
+    </actions>
+</idea-plugin>
