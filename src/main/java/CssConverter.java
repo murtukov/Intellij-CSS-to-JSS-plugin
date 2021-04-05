@@ -4,21 +4,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-/**
- * TODO:
- *  1. Simply stringify rule values
- *  2. Ignore comment blocks
- *  3. Process font names with spaces correctly
- */
 public class CssConverter {
-    public StringBuilder buffer = new StringBuilder();
-    public StringBuilder result = new StringBuilder();
-    char[] stoppers             = new char[] {'{', ':', ';', '}'};
+    private final StringBuilder buffer = new StringBuilder();
+    private final StringBuilder result = new StringBuilder();
+    private final char[] stoppers      = new char[]{'{', ':', ';', '}'};
+    private final String[] rules       = new String[]{"margin", "padding"};
+    private String currentRule;
 
     public String parse(String css) {
         var scope = 0;
 
-        css = normalizeWhitespaces(css);
+        css = removeCommentBlocks(normalizeWhitespaces(css));
 
         for (final char c : css.toCharArray()) {
             if ('(' == c) {
@@ -35,7 +31,7 @@ public class CssConverter {
             }
         }
 
-        return result.toString().trim();
+        return result.toString();
     }
 
     private String convertToken(String token, char stopper) {
@@ -43,9 +39,9 @@ public class CssConverter {
 
         switch (stopper) {
             case '{': // selector
-                return convertSelector(token);
+                return "{\n";
             case ':': // rule name
-                return convertRuleName(token);
+                return "    " + convertRuleName(token) + ":";
             case ';': // rule value
                 return convertRuleValue(token);
             case '}': // end of block
@@ -55,26 +51,16 @@ public class CssConverter {
         return "";
     }
 
-    private String convertSelector(String token) {
-        return "{\n" + token;
-    }
-
     private String convertRuleName(String token) {
         if (token.charAt(0) == '-') {
-            return "'"+token+"':";
+            return String.format("'%s'", token);
         }
 
-        return toCamelCase(token) + ":";
+        return this.currentRule = toCamelCase(token);
     }
 
     private String convertRuleValue(String token) {
-        token = token.trim();
-
-//        if (true) {
-//            return " " + new CssValue(token) + ",\n";
-//        }
-
-        return " " + new CssValue(token) + ",\n";
+        return " " + new CssValue(token.trim()) + ",\n";
     }
 
     /**
@@ -86,6 +72,21 @@ public class CssConverter {
                 .collect(Collectors.joining());
 
         return Character.toLowerCase(temp.charAt(0)) + temp.substring(1);
+    }
+
+    private String removeCommentBlocks(String input) {
+        while (true) {
+            var start = input.indexOf("/*");
+            var end = input.indexOf("*/");
+
+            if (-1 != start && -1 != end) {
+                input = input.substring(0, start) + input.substring(end + 2);
+            } else {
+                break;
+            }
+        }
+
+        return input;
     }
 
     private String normalizeWhitespaces(String input) {
@@ -121,9 +122,8 @@ public class CssConverter {
     }
 
     private String trimQuotes(String input) {
-        return input
-                .replaceAll("^'|'$", "")
-                .replaceAll("^\"|\"$", "");
+        return input.replaceAll("^'|'$", "")
+                    .replaceAll("^\"|\"$", "");
     }
 
     private ArrayList<String> split(String input, char separator) {
@@ -168,7 +168,7 @@ public class CssConverter {
         private final ArrayList<String> parts;
 
         CssValue(String input) {
-            this.parts = split(input, ',');
+            parts = split(input, ',');
         }
 
         @Override
@@ -178,33 +178,54 @@ public class CssConverter {
             for (String part : parts) {
                 part = normalizeWhitespaces(part);
                 var partResult = new ArrayList<String>();
+                var values = split(part, ' ');
 
-                for (String value : split(part, ' ')) {
-                    partResult.add(
-                        maybeWrapIntoQuotes(
-                            trimQuotes(
-                                removeSuffix(value)
-                            ).replace("'", "\\'")
-                        )
-                    );
+                if (currentRule.equals("fontFamily")) {
+                    partResult.add(processValue(part));
+                } else {
+                    for (String value : values) {
+                        partResult.add(processValue(value));
+                    }
                 }
 
                 if (partResult.size() > 1) {
-                    result.add("["+String.join(", ", partResult)+"]");
+                    var lastItem = values.get(partResult.size() - 1);
+
+                    if (lastItem.equals("!important") && Arrays.asList(rules).contains(currentRule)) {
+                        partResult.remove(partResult.size() - 1);
+                        result.add("[" + join(partResult, true, false) + ", '!important']");
+                    } else {
+                        result.add(join(partResult, true, false));
+                    }
                 } else {
-                    result.add(String.join(", ", partResult));
+                    result.add(join(partResult, false, false));
                 }
             }
 
             if (result.size() > 1) {
                 if (containsArrays(result)) {
-                    return "[\n" + String.join(",\n", result) + "\n]";
+                    return join(result, true, true);
                 }
-
-                return "[" + String.join(", ", result) + "]";
+                return join(result, true, false);
             }
 
-            return String.join(", ", result);
+            return join(result, false, false);
+        }
+
+        private String processValue(String input) {
+            return maybeWrapIntoQuotes(trimQuotes(removeSuffix(input)).replace("'", "\\'"));
+        }
+
+        private String join(ArrayList<String> input, boolean wrap, boolean multiline) {
+            if (wrap) {
+                if (multiline) {
+                    return "[\n" + String.join(",\n", input) + "\n]";
+                }
+
+                return "[" + String.join(", ", input) + "]";
+            }
+
+            return String.join(", ", input);
         }
 
         private boolean containsArrays(ArrayList<String> input) {
