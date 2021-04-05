@@ -12,11 +12,10 @@
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <!-- Add your extensions here -->
+        <copyPastePreProcessor implementation="ContexMenuAction" order="last"/>
     </extensions>
 
     <actions>
-        <!-- Add your actions here -->
         <action id="MyAction" class="MyAction" text="Pop Dialog Action" description="SDK example action">
             <add-to-group group-id="ToolsMenu" anchor="first"/>
         </action>
