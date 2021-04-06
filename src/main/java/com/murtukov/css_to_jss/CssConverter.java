@@ -1,3 +1,5 @@
+package com.murtukov.css_to_jss;
+
 import com.google.common.primitives.Chars;
 
 import java.util.ArrayList;

@@ -1,29 +1,45 @@
+package com.murtukov.css_to_jss;
+
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
-import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.command.WriteCommandAction;
+import com.intellij.openapi.ide.CopyPasteManager;
 import org.jetbrains.annotations.NotNull;
 
-public class MyAction extends AnAction {
+import java.awt.datatransfer.DataFlavor;
+
+public class PasteAsJssAction extends AnAction {
     @Override
     public void actionPerformed(@NotNull AnActionEvent event) {
-        // Using the event, create and show a dialog
-        var currentProject = event.getProject();
-        var dlgMsg = new StringBuilder(event.getPresentation().getText() + " Selected!");
-        var dlgTitle = event.getPresentation().getDescription();
+        var cpManager = CopyPasteManager.getInstance();
+        var contents = cpManager.getContents();
+        var project = event.getProject();
+        var editor = event.getData(CommonDataKeys.EDITOR);
+        var document = editor.getDocument();
+        var primaryCaret = editor.getCaretModel().getPrimaryCaret();
 
-        // If an element is selected in the editor, add info about it.
-        var nav = event.getData(CommonDataKeys.NAVIGATABLE);
+        assert contents != null;
 
-        if (nav != null) {
-            dlgMsg.append(String.format("\nSelected Element: %s", nav.toString()));
-        }
+        var parser = new CssConverter();
 
-        Messages.showMessageDialog(currentProject, dlgMsg.toString(), dlgTitle, Messages.getInformationIcon());
+        WriteCommandAction.runWriteCommandAction(project, () -> {
+            try {
+                document.replaceString(
+                    primaryCaret.getSelectionStart(),
+                    primaryCaret.getSelectionEnd(),
+                    parser.parse(contents.getTransferData(DataFlavor.stringFlavor).toString())
+                );
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+
+        primaryCaret.removeSelection();
     }
 
     @Override
     public boolean isDumbAware() {
-        return false;
+        return true;
     }
 }

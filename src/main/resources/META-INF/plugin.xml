@@ -12,12 +12,14 @@
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <copyPastePreProcessor implementation="ContexMenuAction" order="last"/>
+
     </extensions>
 
     <actions>
-        <action id="MyAction" class="MyAction" text="Pop Dialog Action" description="SDK example action">
-            <add-to-group group-id="ToolsMenu" anchor="first"/>
+        <action id="com.murtukov.css_to_jss.PasteAsJssAction" class="com.murtukov.css_to_jss.PasteAsJssAction" text="Paste as JSS"
+                description="Paste contents of clipboard as JSS (JavaScript)">
+            <add-to-group group-id="Copy.Paste.Special" anchor="first"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="shift V"/>
         </action>
     </actions>
 </idea-plugin>
