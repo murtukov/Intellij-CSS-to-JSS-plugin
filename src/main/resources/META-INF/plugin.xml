@@ -16,7 +16,7 @@
     </extensions>
 
     <actions>
-        <action id="com.murtukov.css_to_jss.PasteAsJssAction" class="com.murtukov.css_to_jss.PasteAsJssAction" text="Paste as JSS"
+        <action id="org.murtukov.css_to_jss.PasteAsJssAction" class="org.murtukov.css_to_jss.PasteAsJssAction" text="Paste as JSS"
                 description="Paste contents of clipboard as JSS (JavaScript)">
             <add-to-group group-id="Copy.Paste.Special" anchor="first"/>
             <keyboard-shortcut keymap="$default" first-keystroke="shift V"/>
