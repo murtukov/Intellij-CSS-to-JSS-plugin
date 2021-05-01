@@ -116,10 +116,10 @@ class CssConverter {
     }
 
     private inner class CssValue(rawValue: String, private val property: CssProperty) {
-        private val parts = rawValue.split(',')
+        private val parts       = rawValue.split(',')
         private var isImportant = false
         private var defaultUnit = "px"
-        private val valueType: ValueType = ValueType.SCALAR
+        private val valueType   = ValueType.SCALAR
 
         init {
             if (rawValue.contains("!important")) {
@@ -150,7 +150,7 @@ class CssConverter {
                 }
 
                 if (partResult.size > 1) {
-                    if (values.last() == "!important" && rules.contains(property.jssName)) {
+                    if (isImportant && rules.contains(property.jssName)) {
                         partResult.removeAt(partResult.size - 1)
                         result.add("[${partResult.join(true)}, '!important']")
                     } else {
