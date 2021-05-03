@@ -3,7 +3,6 @@ package org.murtukov.css_to_jss
 import org.murtukov.css_to_jss.util.*
 import java.util.*
 import kotlin.collections.HashMap
-import kotlin.properties.Delegates
 
 class CssConverter {
     private val rules   = arrayOf("margin", "padding")
@@ -19,10 +18,7 @@ class CssConverter {
         var buffer           = ""
 
         parse@for (c in normalizedCss) {
-            when (c) {
-                '(' -> parenthesisScope++
-                ')' -> parenthesisScope--
-            }
+            parenthesisScope += c.checkParenthesis()
 
             if (stoppers.contains(c) && 0 == parenthesisScope) {
                 if (!expectedStoppers.contains(c)) {
@@ -67,36 +63,6 @@ class CssConverter {
         return if (input.isNumeric()) input else "'$input'";
     }
 
-    private fun String.split(separator: Char): ArrayList<String> {
-        var buffer = ""
-        val parts = ArrayList<String>()
-        var parenthesis = 0
-        var singleQuote = false
-        var doubleQuote = false
-
-        for (c in this) {
-            when (c) {
-                '('  -> parenthesis++
-                ')'  -> parenthesis--
-                '\'' -> singleQuote = !singleQuote
-                '"'  -> doubleQuote = !doubleQuote
-            }
-
-            if (separator == c && 0 == parenthesis && !singleQuote && !doubleQuote) {
-                parts.add(buffer.trim().replace('\n', ' '))
-                buffer = ""
-            } else {
-                buffer += c
-            }
-        }
-
-        if (buffer.isNotBlank()) {
-            parts.add(buffer.trim().replace('\n', ' '))
-        }
-
-        return parts
-    }
-
     private inner class CssProperty(name: String) {
         val cssName = name
         val jssName = when {
@@ -108,24 +74,54 @@ class CssConverter {
     }
 
     private enum class ValueType {
-        SCALAR,                 // 200px
-        SPACE_SEPARATED,        // 0 0 20px 30px
-        COMMA_SEPARATED,        // "Helvetica Neue", Arial, sams-serif
-        COMMA_SPACE_SEPARATED,  // rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px
-        MIXED                   // italic bold .8em/1.2 Helvetica Neue, Arial, sans-serif
+        SCALAR,                 // ex.: 200px
+        SPACE_SEPARATED,        // ex.: 0 0 20px 30px
+        COMMA_SEPARATED,        // ex.: "Helvetica Neue", Open Sans, Arial, sams-serif
+        COMMA_SPACE_SEPARATED,  // ex.: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px
+        MIXED                   // ex.: italic bold .8em/1.2 Helvetica Neue, Open Sans, sans-serif
     }
 
     private inner class CssValue(rawValue: String, private val property: CssProperty) {
-        private val parts = rawValue.split(',')
+        private val parts       = rawValue.split(',')
+        private var valueType   = ValueType.SCALAR
         private var isImportant = false
         private var defaultUnit = "px"
-        private val valueType: ValueType = ValueType.SCALAR
+        private var normalized  = ""
 
         init {
-            if (rawValue.contains("!important")) {
-                rawValue.removeSuffix("!important")
+            normalized = rawValue.normalize()
+
+            if (normalized.contains("!important")) {
+                normalized = normalized.removeSuffix("!important")
                 isImportant = true
             }
+
+            if (normalized.has(',')) {
+                valueType = ValueType.COMMA_SEPARATED
+
+                if (normalized.explode(',').all { it.explode(' ').size > 1 }) {
+                    valueType = ValueType.COMMA_SPACE_SEPARATED
+                }
+            }
+
+            else if (normalized.has(' ')) {
+                valueType = ValueType.SPACE_SEPARATED
+            }
+        }
+
+        fun stringify(): String {
+            when (valueType) {
+                ValueType.SPACE_SEPARATED -> {
+                    normalized.explode(' ').also {
+                        it
+                    }
+                }
+                ValueType.COMMA_SEPARATED -> {}
+                ValueType.COMMA_SPACE_SEPARATED -> {}
+                else -> {}
+            }
+
+            return "";
         }
 
         /**
@@ -150,7 +146,7 @@ class CssConverter {
                 }
 
                 if (partResult.size > 1) {
-                    if (values.last() == "!important" && rules.contains(property.jssName)) {
+                    if (isImportant && rules.contains(property.jssName)) {
                         partResult.removeAt(partResult.size - 1)
                         result.add("[${partResult.join(true)}, '!important']")
                     } else {
@@ -160,15 +156,12 @@ class CssConverter {
                     result.add(partResult.join(false))
                 }
             }
+
             return if (result.size > 1) {
                 if (containsArrays(result)) {
                     result.joinToString(",\n", "[\n", "\n]")
                 } else result.joinToString(", ", "[", "]")
             } else result.joinToString(", ")
-        }
-
-        private fun determineType() {
-
         }
 
         private fun processValue(input: String): String {
